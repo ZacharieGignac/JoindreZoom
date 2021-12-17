@@ -1,0 +1,17 @@
+{
+  "version": "1",
+  "profile": {
+    "macro": {
+      "items": [
+        {
+          "payload": "macro-JoindreZoom_SA.js",
+          "type": "zip",
+          "id": "JoindreZoom_SA",
+          "meta": "active"
+        }
+      ]
+    }
+  },
+  "profileName": "JoindreZoomSA1.0",
+  "generatedAt": "20211217-0817"
+}
