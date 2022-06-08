@@ -1,5 +1,5 @@
 /*
-VERSION 1.0
+VERSION 1.1
 JoindreZoom_SA
 Basé sur "JoindreZoom" (https://github.com/ulaval/telepresence-e21) version 4.1
 Zacharie Gignac 2021
