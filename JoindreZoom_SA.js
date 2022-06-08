@@ -35,7 +35,7 @@ var zoomConfig = {
     autoDeleteMethod: METHOD_ONDISCONNECT, //Méthode de nettoyage: METHOD_ONDISCONNECT , METHOD_ONSTANDBY
     autoDeleteTimeout: 3000 //Temps de grâce avant le nettoyage (ms)
   },
-  ui:{
+  ui: {
     iconOrder: 1
   }
 }
@@ -45,6 +45,13 @@ var zoomConfig = {
 
 /*---------------------------------------------------------------------------------*/
 var widgetActionEventListeners = [];
+var listeningToPrompts = undefined;
+var prompts = [];
+
+function getUniqueId() {
+  return (Date.now() + Math.floor(Math.random() * 100000));
+
+}
 
 var UI = {
   widgets: {
@@ -270,7 +277,6 @@ function callZoom() {
 
 function askPin() {
   zoomAskConferencePin(pin => {
-    if (!isNaN(pin)) {
       zoomCallConfig.conferencePin = pin;
       if (zoomCallConfig.conferenceType == CONFTYPE_HOST) {
         askHostKey();
@@ -278,12 +284,6 @@ function askPin() {
       else {
         callZoom();
       }
-    }
-    else {
-      UI.alert.display('Oups...', 'Le PIN doit être numérique...', () => {
-        askPin();
-      });
-    }
   }, (cancel) => { });
 }
 function askConfNumber() {
@@ -374,7 +374,7 @@ function zoomAskConferencePin(callback, cancelcallback) {
   UI.textPrompt.display({
     Duration: 0,
     FeedbackId: 'fbZoomPINNumber',
-    InputType: 'Numeric',
+    InputType: 'SingleLine',
     SubmitText: 'Suivant',
     KeyboardState: 'Open',
     Placeholder: `Code secret, ou vide`,
@@ -485,7 +485,7 @@ function dtmfSend(string) {
   });
 }
 function dtmfSendCode(string) {
-    xapi.Command.Call.dtmfSend({
+  xapi.Command.Call.dtmfSend({
     DTMFString: `${string}`
   });
 }
@@ -519,9 +519,6 @@ xapi.Status.Call.on(call => {
     }
   }
 });
-
-
-
 
 
 xapi.Event.CallDisconnect.on(call => {
@@ -590,6 +587,67 @@ function usbmode_disabled() {
 function init() {
   hideZoomInCallMenu();
 }
+function registerPromptsListeners() {
+  if (listeningToPrompts == undefined) {
+    if (DEBUG)
+      console.log('Registering Prompt Listeners.');
+    listeningToPrompts = true;
+    xapi.event.on('UserInterface Message Prompt Response', (response) => {
+      prompts.forEach(p => {
+        if (p.FeedbackId == response.FeedbackId) {
+          if (p.callback != undefined) p.callback(response);
+          prompts.splice(prompts.indexOf(p));
+          if (p.Options != undefined) {
+            p.Options.forEach(o => {
+              if (o.id == response.OptionId) {
+                o.callback();
+
+              }
+            });
+          }
+          UI.removePrompt(p);
+        }
+      });
+    });
+
+    xapi.event.on('UserInterface Message TextInput Response', (response) => {
+      prompts.forEach(p => {
+        if (p.FeedbackId == response.FeedbackId) {
+          if (p.callback != undefined) p.callback(response);
+          UI.removePrompt(p);
+        }
+      });
+    });
+
+    xapi.event.on('UserInterface Message TextInput Clear', (response) => {
+      prompts.forEach(p => {
+        if (p.FeedbackId == response.FeedbackId) {
+          if (p.cancelcallback != undefined) p.cancelcallback();
+          UI.removePrompt(p);
+        }
+      });
+    });
+
+    xapi.event.on('UserInterface Message Prompt Cleared', (response) => {
+      prompts.forEach(p => {
+        if (p.FeedbackId == response.FeedbackId) {
+          UI.removePrompt(p);
+          if (p.cancelcallback != undefined) p.cancelcallback();
+        }
+      });
+    });
+
+  }
+  else {
+    if (DEBUG)
+      console.log('NOT Registering Prompt Listeners. Already registered.');
+  }
+}
+xapi.Event.UserInterface.Extensions.Widget.on(event => {
+  widgetActionEventListeners.forEach(l => {
+    l(event);
+  });
+});
 
 var advOptions;
 function getControls() {
